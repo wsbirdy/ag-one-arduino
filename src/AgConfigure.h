@@ -77,6 +77,7 @@ public:
   bool hasSensorPMS2 = true;
   bool hasSensorSGP = true;
   bool hasSensorSHT = true;
+  bool hasSensorAQMS = true;
 
   typedef void (*ConfigurationUpdatedCallback_t)();
   void setConfigurationUpdatedCallback(ConfigurationUpdatedCallback_t callback);

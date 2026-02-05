@@ -1078,7 +1078,7 @@ String Measurements::toString(bool localServer, AgFirmwareMode fwMode, int rssi)
   }
 
   /// TVOx and NOx
-  if (config.hasSensorSGP) {
+  if (config.hasSensorSGP || config.hasSensorAQMS) {
     if (utils::isValidVOC(_tvoc.update.avg)) {
       root[json_prop_tvoc] = ag->round2(_tvoc.update.avg);
     }

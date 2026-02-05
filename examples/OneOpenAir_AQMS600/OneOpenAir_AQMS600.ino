@@ -57,6 +57,7 @@ CC BY-SA 4.0 Attribution-ShareAlike 4.0 International License
 #include "Libraries/airgradient-ota/src/airgradientOta.h"
 #include "Libraries/airgradient-ota/src/airgradientOtaWifi.h"
 #include "Libraries/airgradient-ota/src/airgradientOtaCellular.h"
+#include "../../src/AQMS600/aqms600.h"
 #include "esp_system.h"
 #include "freertos/projdefs.h"
 
@@ -109,6 +110,7 @@ static LocalServer localServer(Serial, openMetrics, measurements, configuration,
 static AgSerial *agSerial;
 static CellularModule *cellularCard;
 static AirgradientClient *agClient;
+static AQMS600_NOx_Analyzer aqms600;
 
 enum NetworkOption { UseWifi, UseCellular };
 NetworkOption networkOption;
@@ -335,7 +337,7 @@ void loop() {
       tempHumSchedule.run();
     }
   }
-  if (configuration.hasSensorSGP) {
+  if (configuration.hasSensorSGP || aqms600.hasActivated()) {
     tvocSchedule.run();
   }
   if (ag->isOne()) {
@@ -822,6 +824,13 @@ static void oneIndoorInit(void) {
 
     dispSensorNotFound("PMS");
   }
+  if (aqms600.begin(Serial0) == false) {
+    Serial.println("AQMS-600 sensor not found");
+    aqms600.setActivation(false);
+    configuration.hasSensorAQMS = false;
+    dispSensorNotFound("AQMS-600");
+  }
+
 }
 static void openAirInit(void) {
   configuration.hasSensorSHT = false;
@@ -1221,14 +1230,21 @@ static void updateDisplayAndLedBar(void) {
 }
 
 static void updateTvoc(void) {
-  if (!configuration.hasSensorSGP) {
+  if (!configuration.hasSensorSGP && !aqms600.hasActivated()) {
+    Serial.printf("----NOx service not running----\n");
     return;
+  }
+  if(aqms600.hasActivated()){
+    aqms600.read_NOx_concentration();
+    Serial.printf("NO2 Raw = %.2f %d\n", aqms600.get_no2(), aqms600.get_nox_unit());
   }
 
   measurements.update(Measurements::TVOC, ag->sgp41.getTvocIndex());
   measurements.update(Measurements::TVOCRaw, ag->sgp41.getTvocRaw());
-  measurements.update(Measurements::NOx, ag->sgp41.getNoxIndex());
-  measurements.update(Measurements::NOxRaw, ag->sgp41.getNoxRaw());
+  // measurements.update(Measurements::NOx, ag->sgp41.getNoxIndex());
+  // measurements.update(Measurements::NOxRaw, ag->sgp41.getNoxRaw());
+  measurements.update(Measurements::NOx, (int)round(aqms600.get_no2()));
+  measurements.update(Measurements::NOxRaw, (int)round(aqms600.get_nox_span()));
 }
 
 static void updatePMS5003() {
