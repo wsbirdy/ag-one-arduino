@@ -200,7 +200,7 @@ void setup() {
    * identify board type */
   Wire.beginTransmission(OLED_I2C_ADDR);
   if (Wire.endTransmission() == 0x00) {
-    ag = new AirGradient(BoardType::OPEN_AIR_OUTDOOR);  // Change from ONE_INDOOR to OPEN_AIR_OUTDOOR for dashboard section.
+    ag = new AirGradient(BoardType::ONE_INDOOR);  // Change from ONE_INDOOR to OPEN_AIR_OUTDOOR for dashboard section.
   } else {
     ag = new AirGradient(BoardType::OPEN_AIR_OUTDOOR);
   }

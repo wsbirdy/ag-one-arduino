@@ -361,78 +361,28 @@ void OledDisplay::showDashboard(DashboardStatus status) {
       /** Draw horizonal line */
       DISP()->drawLine(1, 13, 128, 13);
 
-      /** Show CO2 label */
-      DISP()->setFont(u8g2_font_t0_12_tf);
-      DISP()->drawUTF8(1, 27, "CO2");
-
-      DISP()->setFont(u8g2_font_t0_22b_tf);
-      int co2 = round(value.getAverage(Measurements::CO2));
-      if (utils::isValidCO2(co2)) {
-        sprintf(strBuf, "%d", co2);
+      /** Show NO2 value index */
+      char buffer[32]; // Make sure it's big enough for your text!
+      int no2 = round(value.getAverage(Measurements::NO2_PPB));
+      if (utils::isValidNOx(no2)) {
+        sprintf(strBuf, "%3.4f", round(value.getAverage(Measurements::NO2_PPB)));
       } else {
         sprintf(strBuf, "%s", "-");
       }
-      DISP()->drawStr(1, 48, strBuf);
 
-      /** Show CO2 value index */
-      DISP()->setFont(u8g2_font_t0_12_tf);
-      DISP()->drawStr(1, 61, "ppm");
+      DISP()->setFont(u8g2_font_t0_18b_tf);
+      int x = 10, y = 45;
+      DISP()->drawStr(x, y, "NO");
 
-      /** Draw vertical line */
-      DISP()->drawLine(52, 14, 52, 64);
-      DISP()->drawLine(97, 14, 97, 64);
+      int x_offset = DISP()->getStrWidth("NO");
+      DISP()->setFont(u8g2_font_5x7_tr);
+      DISP()->drawStr(x + x_offset + 1, y + 5, "2");
 
-      /** Draw PM2.5 label */
-      DISP()->setFont(u8g2_font_t0_12_tf);
-      DISP()->drawStr(55, 27, "PM2.5");
+      int x_offset2 = DISP()->getStrWidth("2");
+      sprintf(buffer, ": %s ppb", strBuf);
+      DISP()->setFont(u8g2_font_t0_18b_tf);
+      DISP()->drawStr(x + x_offset +x_offset2 + 1, y, buffer);
 
-      /** Draw PM2.5 value */
-      int pm25 = round(value.getAverage(Measurements::PM25));
-      if (utils::isValidPm(pm25)) {
-        if (config.hasSensorSHT && config.isPMCorrectionEnabled()) {
-          pm25 = round(value.getCorrectedPM25(true));
-        }
-        if (config.isPmStandardInUSAQI()) {
-          sprintf(strBuf, "%d", ag->pms5003.convertPm25ToUsAqi(pm25));
-        } else {
-          sprintf(strBuf, "%d", pm25);
-        }
-      } else { /** Show invalid value. */
-        sprintf(strBuf, "%s", "-");
-      }
-      DISP()->setFont(u8g2_font_t0_22b_tf);
-      DISP()->drawStr(55, 48, strBuf);
-
-      /** Draw PM2.5 unit */
-      DISP()->setFont(u8g2_font_t0_12_tf);
-      if (config.isPmStandardInUSAQI()) {
-        DISP()->drawUTF8(55, 61, "AQI");
-      } else {
-        DISP()->drawUTF8(55, 61, "ug/m³");
-      }
-
-      /** Draw tvocIndexlabel */
-      DISP()->setFont(u8g2_font_t0_12_tf);
-      DISP()->drawStr(100, 27, "VOC:");
-
-      /** Draw tvocIndexvalue */
-      int tvoc = round(value.getAverage(Measurements::TVOC));
-      if (utils::isValidVOC(tvoc)) {
-        sprintf(strBuf, "%d", tvoc);
-      } else {
-        sprintf(strBuf, "%s", "-");
-      }
-      DISP()->drawStr(100, 39, strBuf);
-
-      /** Draw NOx label */
-      int nox = round(value.getAverage(Measurements::NOx));
-      DISP()->drawStr(100, 53, "NOx:");
-      if (utils::isValidNOx(nox)) {
-        sprintf(strBuf, "%d", nox);
-      } else {
-        sprintf(strBuf, "%s", "-");
-      }
-      DISP()->drawStr(100, 63, strBuf);
     } while (DISP()->nextPage());
   } else if (ag->isBasic()) {
     ag->display.clear();
