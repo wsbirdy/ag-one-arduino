@@ -29,6 +29,7 @@
 #define json_prop_nox "noxIndex"
 #define json_prop_noxRaw "noxRaw"
 #define json_prop_co2 "rco2"
+#define JSON_PROP_NO2_PPB "measure6"
 
 Measurements::Measurements(Configuration &config) : config(config) {
 #ifndef ESP8266
@@ -45,6 +46,7 @@ Measurements::Measurements(Configuration &config) : config(config) {
   _tvoc_raw.update.avg = utils::getInvalidVOC();
   _nox.update.avg = utils::getInvalidNOx();
   _nox_raw.update.avg = utils::getInvalidNOx();
+  _no2.update.avg = utils::getInvalidNOx();
 
   _pm_03_pc[0].update.avg = utils::getInvalidPmValue();
   _pm_03_pc[1].update.avg = utils::getInvalidPmValue();
@@ -102,7 +104,7 @@ void Measurements::printCurrentAverage() {
     }
   }
 
-  if (config.hasSensorSGP) {
+  if (config.hasSensorSGP || config.hasSensorAQMS) {
     if (utils::isValidVOC(_tvoc.update.avg)) {
       Serial.printf("TVOC Index = %.1f\n", _tvoc.update.avg);
     } else {
@@ -122,6 +124,11 @@ void Measurements::printCurrentAverage() {
       Serial.printf("NOx Raw = %.1f\n", _nox_raw.update.avg);
     } else {
       Serial.printf("NOx Raw = -\n");
+    }
+    if (utils::isValidNOx(_no2.update.avg)) {
+      Serial.printf("NO2 = %.4f ppb\n", _no2.update.avg);
+    } else {
+      Serial.printf("NO2 = -\n");
     }
   }
 
@@ -183,6 +190,9 @@ void Measurements::maxPeriod(MeasurementType type, int max) {
     break;
   case NOxRaw:
     _nox_raw.update.max = max;
+    break;
+  case NO2_PPB:
+    _no2.update.max = max;
     break;
   case PM25:
     _pm_25[0].update.max = max;
@@ -314,6 +324,10 @@ bool Measurements::update(MeasurementType type, int val, int ch) {
   case PM10_PC:
     temporary = &_pm_10_pc[ch];
     invalidValue = utils::getInvalidPmValue();
+    break;
+  case NO2_PPB:
+    temporary = &_no2;
+    invalidValue = utils::getInvalidVOC();
     break;
   default:
     break;
@@ -462,6 +476,9 @@ int Measurements::get(MeasurementType type, int ch) {
   case NOxRaw:
     temporary = &_nox_raw;
     break;
+  case NO2_PPB:
+    temporary = &_no2;
+    break;
   case PM25:
     temporary = &_pm_25[ch];
     break;
@@ -548,6 +565,9 @@ float Measurements::getAverage(MeasurementType type, int ch) {
     break;
   case NOx:
     measurementAverage = _nox.update.avg;
+    break;
+  case NO2_PPB:
+    measurementAverage = _no2.update.avg;
     break;
   case PM25:
     measurementAverage = _pm_25[ch].update.avg;
@@ -855,6 +875,7 @@ Measurements::Measures Measurements::getMeasures() {
   mc.tvoc_raw = _tvoc_raw.update.avg;
   mc.nox = _nox.update.avg;
   mc.nox_raw = _nox_raw.update.avg;
+  mc.no2_ppb = _no2.update.avg;
   // Temperature & Humidity
   mc.temperature[0] = _temperature[0].update.avg;
   mc.humidity[0] = _humidity[0].update.avg;
@@ -1091,6 +1112,7 @@ String Measurements::toString(bool localServer, AgFirmwareMode fwMode, int rssi)
     if (utils::isValidNOx(_nox_raw.update.avg)) {
       root[json_prop_noxRaw] = ag->round2(_nox_raw.update.avg);
     }
+    root[JSON_PROP_NO2_PPB] = ag->round2(_no2.update.avg);
   }
 
   root["boot"] = _bootCount;
