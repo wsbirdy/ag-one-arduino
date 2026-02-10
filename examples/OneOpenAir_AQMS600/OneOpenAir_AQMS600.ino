@@ -200,7 +200,7 @@ void setup() {
    * identify board type */
   Wire.beginTransmission(OLED_I2C_ADDR);
   if (Wire.endTransmission() == 0x00) {
-    ag = new AirGradient(BoardType::ONE_INDOOR);
+    ag = new AirGradient(BoardType::OPEN_AIR_OUTDOOR);  // Change from ONE_INDOOR to OPEN_AIR_OUTDOOR for dashboard section.
   } else {
     ag = new AirGradient(BoardType::OPEN_AIR_OUTDOOR);
   }
@@ -824,12 +824,6 @@ static void oneIndoorInit(void) {
 
     dispSensorNotFound("PMS");
   }
-  if (aqms600.begin(Serial0) == false) {
-    Serial.println("AQMS-600 sensor not found");
-    aqms600.setActivation(false);
-    configuration.hasSensorAQMS = false;
-    dispSensorNotFound("AQMS-600");
-  }
 
 }
 static void openAirInit(void) {
@@ -943,6 +937,14 @@ static void boardInit(void) {
     oneIndoorInit();
   } else {
     openAirInit();
+  }
+
+  /** Initial AQMS600 NO2 Analyzer*/ 
+  if (aqms600.begin(Serial0) == false) {
+    Serial.println("AQMS-600 sensor not found");
+    aqms600.setActivation(false);
+    configuration.hasSensorAQMS = false;
+    dispSensorNotFound("AQMS-600");
   }
 
   /** Set S8 CO2 abc days period */
@@ -1243,8 +1245,7 @@ static void updateTvoc(void) {
   measurements.update(Measurements::TVOCRaw, ag->sgp41.getTvocRaw());
   // measurements.update(Measurements::NOx, ag->sgp41.getNoxIndex());
   // measurements.update(Measurements::NOxRaw, ag->sgp41.getNoxRaw());
-  measurements.update(Measurements::NOx, (int)round(aqms600.get_no2()));
-  measurements.update(Measurements::NOxRaw, (int)round(aqms600.get_nox_span()));
+  measurements.update(Measurements::NO2_PPB, (int)round(aqms600.get_no2()));
 }
 
 static void updatePMS5003() {
