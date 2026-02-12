@@ -216,7 +216,7 @@ private:
   IntegerValue _co2;
   IntegerValue _tvoc; // Index value
   IntegerValue _tvoc_raw;
-  IntegerValue _no2; // Absolute value in ppb
+  FloatValue   _no2; // Absolute value in ppb
   IntegerValue _nox; // Index value
   IntegerValue _nox_raw;
   IntegerValue _pm_01[2];    // pm 1.0 atmospheric environment

@@ -325,10 +325,6 @@ bool Measurements::update(MeasurementType type, int val, int ch) {
     temporary = &_pm_10_pc[ch];
     invalidValue = utils::getInvalidPmValue();
     break;
-  case NO2_PPB:
-    temporary = &_no2;
-    invalidValue = utils::getInvalidVOC();
-    break;
   default:
     break;
   };
@@ -399,6 +395,10 @@ bool Measurements::update(MeasurementType type, float val, int ch) {
   case Humidity:
     temporary = &_humidity[ch];
     invalidValue = utils::getInvalidHumidity();
+    break;
+  case NO2_PPB:
+    temporary = &_no2;
+    invalidValue = utils::getInvalidNOx();
     break;
   default:
     break;
@@ -476,9 +476,6 @@ int Measurements::get(MeasurementType type, int ch) {
   case NOxRaw:
     temporary = &_nox_raw;
     break;
-  case NO2_PPB:
-    temporary = &_no2;
-    break;
   case PM25:
     temporary = &_pm_25[ch];
     break;
@@ -525,6 +522,9 @@ float Measurements::getFloat(MeasurementType type, int ch) {
     break;
   case Humidity:
     temporary = &_humidity[ch];
+    break;
+  case NO2_PPB:
+    temporary = &_no2;
     break;
   default:
     break;
