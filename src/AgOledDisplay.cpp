@@ -363,9 +363,9 @@ void OledDisplay::showDashboard(DashboardStatus status) {
 
       /** Show NO2 value index */
       char buffer[32]; // Make sure it's big enough for your text!
-      int no2 = round(value.getAverage(Measurements::NO2_PPB));
+      int no2 = value.getAverage(Measurements::NO2_PPB);
       if (utils::isValidNOx(no2)) {
-        sprintf(strBuf, "%3.4f", round(value.getAverage(Measurements::NO2_PPB)));
+        sprintf(strBuf, "%3.2f", value.getAverage(Measurements::NO2_PPB));
       } else {
         sprintf(strBuf, "%s", "-");
       }
