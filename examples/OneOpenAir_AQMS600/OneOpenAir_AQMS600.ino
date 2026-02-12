@@ -1245,7 +1245,7 @@ static void updateTvoc(void) {
   measurements.update(Measurements::TVOCRaw, ag->sgp41.getTvocRaw());
   // measurements.update(Measurements::NOx, ag->sgp41.getNoxIndex());
   // measurements.update(Measurements::NOxRaw, ag->sgp41.getNoxRaw());
-  measurements.update(Measurements::NO2_PPB, (int)round(aqms600.get_no2()));
+  measurements.update(Measurements::NO2_PPB, aqms600.get_no2());
 }
 
 static void updatePMS5003() {
@@ -1507,6 +1507,7 @@ void setMeasurementMaxPeriod() {
   measurements.maxPeriod(Measurements::TVOCRaw, max);
   measurements.maxPeriod(Measurements::NOx, max);
   measurements.maxPeriod(Measurements::NOxRaw, max);
+  measurements.maxPeriod(Measurements::NO2_PPB, max);
 
   /// Max period for PMS sensors measurements
   max = calculateMaxPeriod(SENSOR_PM_UPDATE_INTERVAL);
