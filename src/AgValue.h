@@ -50,7 +50,10 @@ public:
     float tvoc_raw;
     float nox; // Index value
     float nox_raw;
+    float no_ppb;
     float no2_ppb;
+    float nox_ppb;
+    float gas_span;
     float pm_01[2];    // pm 1.0 atmospheric environment
     float pm_25[2];    // pm 2.5 atmospheric environment
     float pm_10[2];    // pm 10 atmospheric environment
@@ -79,6 +82,9 @@ public:
     TVOC, // index value
     TVOCRaw,
     NO2_PPB,
+    NO_PPB,
+    NOx_PPB,
+    GAS_SPAN,
     NOx, // index value
     NOxRaw,
     PM01,    // PM1.0 under atmospheric environment
@@ -216,7 +222,10 @@ private:
   IntegerValue _co2;
   IntegerValue _tvoc; // Index value
   IntegerValue _tvoc_raw;
+  FloatValue   _no; // Absolute value in ppb
   FloatValue   _no2; // Absolute value in ppb
+  FloatValue   _nox_ana; // Absolute value in ppb
+  FloatValue   _gasSpan; // gas flow
   IntegerValue _nox; // Index value
   IntegerValue _nox_raw;
   IntegerValue _pm_01[2];    // pm 1.0 atmospheric environment

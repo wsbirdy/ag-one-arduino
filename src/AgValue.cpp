@@ -29,7 +29,10 @@
 #define json_prop_nox "noxIndex"
 #define json_prop_noxRaw "noxRaw"
 #define json_prop_co2 "rco2"
+#define JSON_PROP_NO_PPB "measure5"
 #define JSON_PROP_NO2_PPB "measure6"
+#define JSON_PROP_NOX_PPB "measure7"
+#define JSON_PROP_GAS_SPAN "measure8"
 
 Measurements::Measurements(Configuration &config) : config(config) {
 #ifndef ESP8266
@@ -46,7 +49,10 @@ Measurements::Measurements(Configuration &config) : config(config) {
   _tvoc_raw.update.avg = utils::getInvalidVOC();
   _nox.update.avg = utils::getInvalidNOx();
   _nox_raw.update.avg = utils::getInvalidNOx();
+  _no.update.avg = utils::getInvalidNOx();
   _no2.update.avg = utils::getInvalidNOx();
+  _nox.update.avg = utils::getInvalidNOx();
+  _gasSpan.update.avg = utils::getInvalidNOx();
 
   _pm_03_pc[0].update.avg = utils::getInvalidPmValue();
   _pm_03_pc[1].update.avg = utils::getInvalidPmValue();
@@ -193,6 +199,15 @@ void Measurements::maxPeriod(MeasurementType type, int max) {
     break;
   case NO2_PPB:
     _no2.update.max = max;
+    break;
+  case NO_PPB:
+    _no.update.max = max;
+    break;
+  case NOx_PPB:
+    _nox_ana.update.max = max;
+    break;
+  case GAS_SPAN:
+    _gasSpan.update.max = max;
     break;
   case PM25:
     _pm_25[0].update.max = max;
@@ -397,8 +412,44 @@ bool Measurements::update(MeasurementType type, float val, int ch) {
     invalidValue = utils::getInvalidHumidity();
     break;
   case NO2_PPB:
-    temporary = &_no2;
-    invalidValue = utils::getInvalidNOx();
+    if(val<=0 || val>500.0f){ // Check Out of Bound
+      return true;  
+    }else{
+      _no2.update.avg = val;
+      return true; 
+      // temporary = &_no2;
+      // invalidValue = utils::getInvalidNOx();
+    }
+    break;
+  case NO_PPB:
+    if(val<=0 || val>500.0f){ // Check Out of Bound
+      return true;
+    }else{
+      _no.update.avg = val;
+      return true; 
+      // temporary = &_no;
+      // invalidValue = utils::getInvalidNOx();
+    }
+    break;
+  case NOx_PPB:
+    if(val<=0 || val>500.0f){ // Check Out of Bound
+      return true;
+    }else{
+      _nox_ana.update.avg = val;
+      return true; 
+      // temporary = &_nox_ana;
+      // invalidValue = utils::getInvalidNOx();
+    }
+    break;
+  case GAS_SPAN:
+    if(val<=0 || val>1000.0f){ // Check Out of Bound
+      return true;
+    }else{
+      _gasSpan.update.avg = val;
+      return true; 
+      // temporary = &_gasSpan;
+      // invalidValue = utils::getInvalidNOx();
+    }
     break;
   default:
     break;
@@ -526,6 +577,15 @@ float Measurements::getFloat(MeasurementType type, int ch) {
   case NO2_PPB:
     temporary = &_no2;
     break;
+  case NO_PPB:
+    temporary = &_no;
+    break;
+  case NOx_PPB:
+    temporary = &_nox_ana;
+    break;
+  case GAS_SPAN:
+    temporary = &_gasSpan;
+    break;
   default:
     break;
   }
@@ -568,6 +628,15 @@ float Measurements::getAverage(MeasurementType type, int ch) {
     break;
   case NO2_PPB:
     measurementAverage = _no2.update.avg;
+    break;
+  case NO_PPB:
+    measurementAverage = _no.update.avg;
+    break;
+  case NOx_PPB:
+    measurementAverage = _nox_ana.update.avg;
+    break;
+  case GAS_SPAN:
+    measurementAverage = _gasSpan.update.avg;
     break;
   case PM25:
     measurementAverage = _pm_25[ch].update.avg;
@@ -876,6 +945,9 @@ Measurements::Measures Measurements::getMeasures() {
   mc.nox = _nox.update.avg;
   mc.nox_raw = _nox_raw.update.avg;
   mc.no2_ppb = _no2.update.avg;
+  mc.no_ppb = _no.update.avg;
+  mc.nox_ppb = _nox_ana.update.avg;
+  mc.gas_span = _gasSpan.update.avg;
   // Temperature & Humidity
   mc.temperature[0] = _temperature[0].update.avg;
   mc.humidity[0] = _humidity[0].update.avg;
@@ -1112,7 +1184,10 @@ String Measurements::toString(bool localServer, AgFirmwareMode fwMode, int rssi)
     if (utils::isValidNOx(_nox_raw.update.avg)) {
       root[json_prop_noxRaw] = ag->round2(_nox_raw.update.avg);
     }
+    root[JSON_PROP_NO_PPB] = ag->round2(_no.update.avg);
     root[JSON_PROP_NO2_PPB] = ag->round2(_no2.update.avg);
+    root[JSON_PROP_NOX_PPB] = ag->round2(_nox_ana.update.avg);
+    root[JSON_PROP_GAS_SPAN] = ag->round2(_gasSpan.update.avg);
   }
 
   root["boot"] = _bootCount;
