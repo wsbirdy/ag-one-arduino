@@ -17,11 +17,10 @@
 #define RECV_READ   0xAA
 #define RECV_WRITE  0x99
 
-float vectorToFloat(const std::vector<uint8_t>& data, size_t startIndex) ;
-
-
+float AQMS600_NOx_Analyzer::get_no(void) { return nox_params.no_concentration; }
 float AQMS600_NOx_Analyzer::get_no2(void) { return nox_params.no2_concentration; }
-float AQMS600_NOx_Analyzer::get_nox_span(void) { return nox_params.nox_span_range; }
+float AQMS600_NOx_Analyzer::get_nox(void) { return nox_params.nox_concentration; }
+float AQMS600_NOx_Analyzer::get_gas_span(void) { return nox_params.span_gas_flow; }
 uint8_t AQMS600_NOx_Analyzer::get_nox_unit(void) { return nox_params.unit; }
 
 AQMS600_NOx_Analyzer::AQMS600_NOx_Analyzer(/* args */)
@@ -51,12 +50,10 @@ void AQMS600_NOx_Analyzer::read_NOx_concentration(void) {
         send_read(this->_serial, AQMS600_NOx_concentration_params);
         data = receivePackage(AQMS600_NOx_concentration_params);
         
+        Serial.println("---------");
         Serial.printf("Received %d bytes\n", data.data_payload.size());
 
-        nox_params.no_concentration = vectorToFloat(data.data_payload, 0);
-        nox_params.no2_concentration = vectorToFloat(data.data_payload, 4);
-        nox_params.nox_concentration = vectorToFloat(data.data_payload, 8);
-        // nox_params.unit = data.data_payload[12];
+        updateParams(data.data_payload);
 
         // for (size_t i = 0; i < data.data_payload.size(); i++)
         // {
@@ -69,9 +66,12 @@ void AQMS600_NOx_Analyzer::read_NOx_concentration(void) {
         //                                ((uint32_t)data.data_payload[2]<<8) | 
         //                                (uint32_t)data.data_payload[3];
 
-        Serial.printf("NO2 Concentration: %.2f\n", nox_params.no2_concentration);
-        Serial.printf("NOx Span Range: %.2f\n", nox_params.nox_span_range);
-        Serial.printf("Unit: %d\n", nox_params.unit);
+        // Serial.printf("NO Concentration: %.2f\n", nox_params.no_concentration);
+        // Serial.printf("NO2 Concentration: %.2f\n", nox_params.no2_concentration);
+        // Serial.printf("NOx Concentration: %.2f\n", nox_params.nox_concentration);
+        // Serial.printf("Span Gas Flow: %.2f\n", nox_params.span_gas_flow);
+        // Serial.printf("Unit: %d\n", nox_params.unit);
+        Serial.println("---------");
     }
 }
 
@@ -107,106 +107,102 @@ void AQMS600_NOx_Analyzer::send_read(Stream *serial, uint8_t cmd) {
 }
 
 auto AQMS600_NOx_Analyzer::receivePackage(uint8_t cmd_type) -> fpi_protocol_packet {
-    uint8_t packageIndex = 0; // Index to track the current byte being verified
-    uint8_t recv_state = 0; // State variable to track the current position in the packet
-    uint8_t datain_size = 0;
-
-    fpi_protocol_packet ref_read_packet = {
-        .header = {0x7D, 0x7B, 0x01, 0xF2, 0x01, 0x10},
-        .cmd_code = {cmd_type, RECV_READ},
-        .end = {0x7D, 0x7D}
-    };
+    uint8_t packageIndex = 0;   // Index to track the current byte being verified
+    uint8_t recv_state = 0;     // State variable to track the current position in the packet
+    uint16_t datain_size = 0;
+    uint32_t startTime = millis();
+    const uint32_t TIMEOUT_MS = 1000; // Serial safety timeout
 
     fpi_protocol_packet incoming_packet;
 
-    while (_serial->available()) {
-        uint8_t byteReceived = _serial->read(); // Read one byte from the serial port
+    // Optimization 1: Pre-reserve vector memory to prevent multiple heap reallocations
+    // Based on your AQMS-600 data, 64 bytes is a safe initial guess.
+    incoming_packet.data_payload.reserve(64); 
+
+    // Optimization 2: Use a more robust loop for Serial timing
+    while (millis() - startTime < TIMEOUT_MS) {
+        if (!_serial->available()) {
+            delayMicroseconds(100); // Small breath for UART buffer to fill
+            continue;
+        }
+
+        uint8_t byteReceived = _serial->read();
         // Serial.printf("Stage %d - Byte[%d] received: %02x\n", recv_state, packageIndex, byteReceived);
+        startTime = millis(); // Reset timeout on every byte received
+
         switch (recv_state) {
-        case 0: // Verify header
-            if (byteReceived == ref_read_packet.header[packageIndex]) {
-                incoming_packet.header[packageIndex] = byteReceived;
-                packageIndex++;
-                if (packageIndex == sizeof(ref_read_packet.header)) {
-                    recv_state = 1; // Move to the next state
-                    packageIndex = 0; // Reset index for next section
+            case 0: // Header (0x7D, 0x7B, 0x01, 0xF2, 0x01, 0x10)
+                if (packageIndex >= 0) {
+                    // We only care about matching your ref_read_packet logic
+                    const uint8_t ref_header[] = {0x7D, 0x7B, 0x01, 0xF2, 0x01, 0x10};
+                    if (byteReceived == ref_header[packageIndex]) {
+                        incoming_packet.header[packageIndex++] = byteReceived;
+                        if (packageIndex == 6) { recv_state = 1; packageIndex = 0; }
+                    } else { packageIndex = 0; }
                 }
-            } else {
-                packageIndex = 0; // Reset if mismatch
-            }
-            break;
+                break;
 
-        case 1: // Verify command code
-            if (byteReceived == ref_read_packet.cmd_code[packageIndex]) {
-                incoming_packet.cmd_code[packageIndex] = byteReceived;
-                packageIndex++;
-                if (packageIndex == sizeof(ref_read_packet.cmd_code)) {
-                    recv_state = 2; // Move to the next state
-                    packageIndex = 0; // Reset index for next section
+            case 1: // Cmd Code
+                incoming_packet.cmd_code[packageIndex++] = byteReceived;
+                if (packageIndex == 2) {
+                    const uint8_t ref_cmd[] = {cmd_type, RECV_READ};
+                    if (incoming_packet.cmd_code[0] == ref_cmd[0]
+                    && incoming_packet.cmd_code[1] == ref_cmd[1]) {
+                        recv_state = 2; // Move to the next state
+                        packageIndex = 0; // Reset index for next section
+
+                    } else {
+                        recv_state = 0; // Reset state if mismatch
+                        packageIndex = 0;
+                    }
                 }
-            } else {
-                recv_state = 0; // Reset state if mismatch
+                break;
+
+            case 2: // Length
+                incoming_packet.data_length[packageIndex++] = byteReceived;
+                if (packageIndex == 2) {
+                    datain_size = (incoming_packet.data_length[0] << 8) | incoming_packet.data_length[1];
+                    // Sanity check for length to prevent memory exhaustion
+                    if (datain_size > 256) { recv_state = 0; packageIndex = 0; }
+                    else { recv_state = 3; packageIndex = 0; }
+                }
+                break;
+
+            case 3: // Payload
+                incoming_packet.data_payload.push_back(byteReceived);
+                if (incoming_packet.data_payload.size() >= datain_size) {
+                    recv_state = 4;
+                    packageIndex = 0;
+                }
+                break;
+
+            case 4: // CRC16 - Direct Calculation
+                incoming_packet.crc16[packageIndex++] = byteReceived;
+                if (packageIndex == 2) {
+                    // Optimization 3: Do NOT create a checkBuffer vector.
+                    // Instead, calculate CRC in a way that respects the protocol's range.
+                    if (verifyCRC(incoming_packet)) {
+                        recv_state = 5;
+                        packageIndex = 0;
+                    } else {
+                        memset(&incoming_packet, 0, sizeof(incoming_packet));
+                        return incoming_packet;
+                    }
+                }
+                break;
+
+            case 5: // End Bytes (0x7D, 0x7D)
+                incoming_packet.end[packageIndex++] = byteReceived;
+                if (packageIndex == 2) return incoming_packet; // Success!
+                break;
+
+            default:
+                recv_state = 0;
                 packageIndex = 0;
-            }
-            break;
-
-        case 2: // Verify data length
-            incoming_packet.data_length[packageIndex] = byteReceived;
-            packageIndex++;
-            if (packageIndex == sizeof(ref_read_packet.data_length)) {
-                recv_state = 3; // Move to the next state
-                packageIndex = 0; // Reset index for next section
-                // Serial.printf("Data payload received with %d bytes\n", incoming_packet.data_length[0] << 8 | incoming_packet.data_length[1]);
-            }
-            break;
-
-        case 3: // Receive data payload
-            incoming_packet.data_payload.push_back(byteReceived);
-            packageIndex++;
-            datain_size = incoming_packet.data_length[0] << 8 | incoming_packet.data_length[1];
-            if (incoming_packet.data_payload.size() >= datain_size) {
-                recv_state = 4; // Move to the next state
-                packageIndex = 0; // Reset index for next section
-            }
-            break;
-
-        case 4: // Verify CRC16
-            incoming_packet.crc16[packageIndex] = byteReceived;
-            packageIndex++;
-            if (packageIndex == sizeof(ref_read_packet.crc16)) {
-                recv_state = 5; // Move to the next state
-                packageIndex = 0; // Reset index for next section
-            }
-            break;
-
-        case 5: // Verify end bytes
-            if (byteReceived == ref_read_packet.end[packageIndex]) {
-                incoming_packet.end[packageIndex] = byteReceived;
-                packageIndex++;
-                if (packageIndex == sizeof(ref_read_packet.end)) {                    
-                    break; // Packet received successfully
-                }
-            } else {
-                recv_state = 0; // Reset state if mismatch
-                packageIndex = 0;
-            }
-            break;
-
-        default:
-            recv_state = 0; // Reset state in case of unexpected behavior
-            packageIndex = 0;
-            break;
+                break;
         }
-
-        if(incoming_packet.end[1] == 0x7D) {
-            Serial.println("Packet received successfully.");
-            break;
-        }
-        
     }
-
     return incoming_packet;
-
 }
 
 uint16_t AQMS600_NOx_Analyzer::crc16_modbus(const uint8_t *data, size_t length) {
@@ -230,18 +226,44 @@ uint16_t AQMS600_NOx_Analyzer::crc16_modbus(const uint8_t *data, size_t length) 
     return crc;
 }
 
-float vectorToFloat(const vector<uint8_t>& data, size_t startIndex) {
-    if (data.size() < startIndex + 4) return 0.0f;
+void AQMS600_NOx_Analyzer::updateParams(const vector<uint8_t>& payload) {
+    
+    memset((void*)&nox_params, 0, sizeof(nox_params));
+    nox_params.span_gas_flow = payload.size();
+    if (payload.size() < sizeof(nox_params)){ return; }
 
-    uint8_t temp[4] = {
-        data[startIndex + 0], // Swap byte 3 to position 0
-        data[startIndex + 1], // Swap byte 2 to position 1
-        data[startIndex + 2],
-        data[startIndex + 3]
+    // 1. Bulk copy
+    memcpy((void*)&nox_params, payload.data(), sizeof(nox_params));
+
+    // 2. Fast Byte-Swapping using ESP32-C3 (RISC-V) Intrinsics
+    // We create a tiny lambda helper for readability
+    auto swap = [](float* f) {
+        uint32_t* p = reinterpret_cast<uint32_t*>(f);
+        *p = __builtin_bswap32(*p);
     };
 
-    float result;
-    memcpy(&result, temp, 4);
-    // Serial.printf("Converted float value: %.8f\n\n", result);
-    return result;
+    // // Swap all floats (Big-Endian sensor -> Little-Endian ESP32)
+    swap((float*)&nox_params.no_concentration);
+    swap((float*)&nox_params.no2_concentration);
+    swap((float*)&nox_params.nox_concentration);
+    
+    // // Note: nox_params.unit (at index 12) is 1 byte, so NO SWAP needed.
+    
+    swap((float*)&nox_params.span_gas_flow);
+}
+
+bool AQMS600_NOx_Analyzer::verifyCRC(const fpi_protocol_packet& pkg) {
+    uint8_t buf[256]; 
+    uint16_t len = 0;
+
+    // Based on your logic (index 2-5 of header, cmd, length, payload)
+    memcpy(&buf[len], &pkg.header[2], 4); len += 4;
+    memcpy(&buf[len], pkg.cmd_code, 2);    len += 2;
+    memcpy(&buf[len], pkg.data_length, 2); len += 2;
+    memcpy(&buf[len], pkg.data_payload.data(), pkg.data_payload.size()); len += pkg.data_payload.size();
+
+    uint16_t calculated = crc16_modbus(buf, len);
+    uint16_t received = (pkg.crc16[1] << 8) | pkg.crc16[0]; // Modbus usually Low Byte first
+    // Serial.printf("CRC Expected: %04x, Got: %04x\n", calculated, received);
+    return (calculated == received);
 }

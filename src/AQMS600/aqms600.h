@@ -26,7 +26,7 @@ private:
         uint8_t end[2];
     } packet;
 
-    struct nox_concentration_params
+    volatile struct __attribute__((packed)) nox_concentration_params
     {
         float no_concentration;
         float no2_concentration;
@@ -44,6 +44,8 @@ private:
 
     bool active = true;
     uint16_t crc16_modbus(const uint8_t *data, size_t length);
+    void updateParams(const vector<uint8_t>& payload);
+    bool verifyCRC(const fpi_protocol_packet& pkg);
 
 public:
     AQMS600_NOx_Analyzer(/* args */);
@@ -55,7 +57,9 @@ public:
     void send_read(Stream *serial, uint8_t cmd);
     auto receivePackage(uint8_t cmd_type) -> fpi_protocol_packet;
     float get_no2(void);
-    float get_nox_span(void);
+    float get_no(void);
+    float get_nox(void);
+    float get_gas_span(void);
     uint8_t get_nox_unit(void);
 
 };
