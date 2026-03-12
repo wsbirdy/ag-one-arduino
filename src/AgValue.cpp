@@ -415,40 +415,40 @@ bool Measurements::update(MeasurementType type, float val, int ch) {
     if(val<=0 || val>500.0f){ // Check Out of Bound
       return true;  
     }else{
-      _no2.update.avg = val;
-      return true; 
-      // temporary = &_no2;
-      // invalidValue = utils::getInvalidNOx();
+      // _no2.update.avg = val;
+      // return true; 
+      temporary = &_no2;
+      invalidValue = utils::getInvalidNOx();
     }
     break;
   case NO_PPB:
     if(val<=0 || val>500.0f){ // Check Out of Bound
       return true;
     }else{
-      _no.update.avg = val;
-      return true; 
-      // temporary = &_no;
-      // invalidValue = utils::getInvalidNOx();
+      // _no.update.avg = val;
+      // return true; 
+      temporary = &_no;
+      invalidValue = utils::getInvalidNOx();
     }
     break;
   case NOx_PPB:
     if(val<=0 || val>500.0f){ // Check Out of Bound
       return true;
     }else{
-      _nox_ana.update.avg = val;
-      return true; 
-      // temporary = &_nox_ana;
-      // invalidValue = utils::getInvalidNOx();
+      // _nox_ana.update.avg = val;
+      // return true; 
+      temporary = &_nox_ana;
+      invalidValue = utils::getInvalidNOx();
     }
     break;
   case GAS_SPAN:
     if(val<=0 || val>1000.0f){ // Check Out of Bound
       return true;
     }else{
-      _gasSpan.update.avg = val;
-      return true; 
-      // temporary = &_gasSpan;
-      // invalidValue = utils::getInvalidNOx();
+      // _gasSpan.update.avg = val;
+      // return true; 
+      temporary = &_gasSpan;
+      invalidValue = utils::getInvalidNOx();
     }
     break;
   default:
