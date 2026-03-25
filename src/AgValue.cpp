@@ -1184,10 +1184,10 @@ String Measurements::toString(bool localServer, AgFirmwareMode fwMode, int rssi)
     if (utils::isValidNOx(_nox_raw.update.avg)) {
       root[json_prop_noxRaw] = ag->round2(_nox_raw.update.avg);
     }
-    root[JSON_PROP_NO_PPB] = ag->round2(_no.update.avg);
+    // root[JSON_PROP_NO_PPB] = ag->round2(_no.update.avg);
     root[JSON_PROP_NO2_PPB] = ag->round2(_no2.update.avg);
-    root[JSON_PROP_NOX_PPB] = ag->round2(_nox_ana.update.avg);
-    root[JSON_PROP_GAS_SPAN] = ag->round2(_gasSpan.update.avg);
+    // root[JSON_PROP_NOX_PPB] = ag->round2(_nox_ana.update.avg);
+    // root[JSON_PROP_GAS_SPAN] = ag->round2(_gasSpan.update.avg);
   }
 
   root["boot"] = _bootCount;
