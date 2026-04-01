@@ -13,6 +13,7 @@
 #include "Sgp41/Sgp41.h"
 #include "Sht/Sht.h"
 #include "Main/utils.h"
+#include "Dps368/Dps368.h"
 
 #ifndef GIT_VERSION
 #define GIT_VERSION "3.6.2-snap"
@@ -97,6 +98,12 @@ public:
    *
    */
   Sgp41 sgp41;
+
+  /**
+   * @brief DPS368 Pressure sensor
+   *
+   */
+  Dps368 dps368;
 
   /**
    * @brief OLED Display

@@ -8,6 +8,10 @@
 #define VALID_HUMIDITY_MIN    (0)
 #define INVALID_HUMIDITY      (-1)
 
+#define VALID_PRESSURE_MAX    (200000)
+#define VALID_PRESSURE_MIN    (1000)
+#define INVALID_PRESSURE      (-1)
+
 #define VALID_PMS_MAX         (1000)
 #define VALID_PMS_MIN         (0)
 #define INVALID_PMS           (-1)
@@ -79,6 +83,8 @@ bool utils::isValidVOC(int value) {
 float utils::getInvalidTemperature(void) { return INVALID_TEMPERATURE; }
 
 float utils::getInvalidHumidity(void) { return INVALID_HUMIDITY; }
+
+float utils::getInvalidPressure(void) { return INVALID_PRESSURE; }
 
 int utils::getInvalidCO2(void) { return INVALID_CO2; }
 

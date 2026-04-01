@@ -78,6 +78,7 @@ CC BY-SA 4.0 Attribution-ShareAlike 4.0 International License
 #define FIRMWARE_CHECK_FOR_UPDATE_MS (60 * 60 * 1000)      /** ms */
 #define TIME_TO_START_POWER_CYCLE_CELLULAR_MODULE (1 * 60) /** minutes */
 #define TIMEOUT_WAIT_FOR_CELLULAR_MODULE_READY (2 * 60)    /** minutes */
+#define SENSOR_PRESSURE_UPDATE_INTERVAL 10000                 /** ms */
 
 #define MEASUREMENT_TRANSMIT_CYCLE 3
 #define MAXIMUM_MEASUREMENT_CYCLE_QUEUE 80
@@ -138,6 +139,7 @@ static void updateTvoc(void);
 static void updatePm(void);
 static void sendDataToServer(void);
 static void tempHumUpdate(void);
+static void pressureUpdate(void);
 static void co2Update(void);
 static void printMeasurements();
 static void mdnsInit(void);
@@ -164,6 +166,7 @@ AgSchedule measurementSchedule(WIFI_MEASUREMENT_INTERVAL, newMeasurementCycle);
 AgSchedule co2Schedule(SENSOR_CO2_UPDATE_INTERVAL, co2Update);
 AgSchedule pmsSchedule(SENSOR_PM_UPDATE_INTERVAL, updatePm);
 AgSchedule tempHumSchedule(SENSOR_TEMP_HUM_UPDATE_INTERVAL, tempHumUpdate);
+// AgSchedule pressureSchedule(SENSOR_PRESSURE_UPDATE_INTERVAL, pressureUpdate);
 AgSchedule tvocSchedule(SENSOR_TVOC_UPDATE_INTERVAL, updateTvoc);
 AgSchedule watchdogFeedSchedule(60000, wdgFeedUpdate);
 AgSchedule checkForUpdateSchedule(FIRMWARE_CHECK_FOR_UPDATE_MS, checkForFirmwareUpdate);
@@ -194,14 +197,10 @@ void setup() {
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   delay(1000);
 
-  /** Detect board type: ONE_INDOOR has OLED display, Scan the I2C address to
+  /** Detect board type: ONE_INDOOR has display, Scan the I2C address to
    * identify board type */
-  Wire.beginTransmission(OLED_I2C_ADDR);
-  if (Wire.endTransmission() == 0x00) {
-    ag = new AirGradient(BoardType::ONE_INDOOR);
-  } else {
-    ag = new AirGradient(BoardType::OPEN_AIR_OUTDOOR);
-  }
+  // Wire.beginTransmission(OLED_I2C_ADDR);
+  ag = new AirGradient(BoardType::ONE_INDOOR);
   Serial.println("Detected " + ag->getBoardName());
 
   configuration.setAirGradient(ag);
@@ -822,6 +821,27 @@ static void oneIndoorInit(void) {
 
     dispSensorNotFound("PMS");
   }
+
+  /** Init pressure sensor */
+  // if (ag->dps368.begin(Wire) == false) {
+  //   Serial.println("Pressure sensor not found");
+  //   configuration.hasSensorDPS = false;
+  // } else {
+  //   // struct params_rate{
+  //   //   int16_t mr;
+  //   //   int16_t osr;
+  //   // };
+  //   // struct params_rate temp = {2, 2};
+  //   // struct params_rate prs = {2, 2};
+  //   // //startMeasureBothCont enables background mode
+  //   // int16_t ret = ag->dps368.startMeasureBothCont(temp.mr, temp.osr, prs.mr, prs.osr);
+  //   // if (ret != 0)
+  //   //   Serial.printf("Init FAILED! ret = %d\n", ret);
+  //   // else
+  //   //   Serial.println("Init complete!");
+  //   configuration.hasSensorDPS = true;
+  // }
+
 }
 static void openAirInit(void) {
   configuration.hasSensorSHT = false;
@@ -1476,6 +1496,29 @@ static void tempHumUpdate(void) {
     Serial.println("SHT read failed");
   }
 }
+
+// static void pressureUpdate(void) {
+//   if (configuration.hasSensorDPS) {
+//     float temperature;
+//     float pressure;
+//     uint8_t oversampling = 7;
+//     int16_t ret;
+
+//     ret = ag->dps368.measureTempOnce(temperature, oversampling);
+//     if (ret != 0)
+//       Serial.printf("FAIL! ret = %d\n", ret);
+//     else
+//       Serial.printf("Temperature: %f degrees of Celsius\n", temperature);
+
+//     ret = ag->dps368.measurePressureOnce(pressure, oversampling);
+//     if (ret != 0)
+//       Serial.printf("FAIL! ret = %d\n", ret);
+//     else
+//       Serial.printf("Pressure: %f Pascal\n", pressure);
+
+//     measurements.update(Measurements::Pressure, pressure);
+//   }
+// }
 
 /* Set max period for each measurement type based on sensor update interval*/
 void setMeasurementMaxPeriod() {

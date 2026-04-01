@@ -386,6 +386,10 @@ bool Measurements::update(MeasurementType type, float val, int ch) {
     temporary = &_humidity[ch];
     invalidValue = utils::getInvalidHumidity();
     break;
+  case Pressure:
+    temporary = &_pressure;
+    invalidValue = utils::getInvalidPressure();
+    break;
   default:
     break;
   }

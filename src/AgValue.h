@@ -74,6 +74,7 @@ public:
   enum MeasurementType {
     Temperature,
     Humidity,
+    Pressure,
     CO2,
     TVOC, // index value
     TVOCRaw,
@@ -211,6 +212,7 @@ private:
   // Some declared as an array (channel), because FW_MODE_O_1PPx has two PMS5003T
   FloatValue _temperature[2];
   FloatValue _humidity[2];
+  FloatValue _pressure;
   IntegerValue _co2;
   IntegerValue _tvoc; // Index value
   IntegerValue _tvoc_raw;
