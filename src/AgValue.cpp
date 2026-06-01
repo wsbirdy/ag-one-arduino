@@ -110,7 +110,7 @@ void Measurements::printCurrentAverage() {
     }
   }
 
-  if (config.hasSensorSGP || config.hasSensorAQMS) {
+  if (config.hasSensorSGP) {
     if (utils::isValidVOC(_tvoc.update.avg)) {
       Serial.printf("TVOC Index = %.1f\n", _tvoc.update.avg);
     } else {
@@ -131,6 +131,15 @@ void Measurements::printCurrentAverage() {
     } else {
       Serial.printf("NOx Raw = -\n");
     }
+
+  }
+
+  if(config.hasSensorAQMS) {
+    // if (utils::isValidNOx(_no.update.avg)) {
+    //   Serial.printf("NO = %.4f ppb\n", _no.update.avg);
+    // } else {
+    //   Serial.printf("NO = -\n");
+    // }
     if (utils::isValidNOx(_no2.update.avg)) {
       Serial.printf("NO2 = %.4f ppb\n", _no2.update.avg);
     } else {
@@ -205,9 +214,6 @@ void Measurements::maxPeriod(MeasurementType type, int max) {
     break;
   case NOx_PPB:
     _nox_ana.update.max = max;
-    break;
-  case GAS_SPAN:
-    _gasSpan.update.max = max;
     break;
   case PM25:
     _pm_25[0].update.max = max;
@@ -413,7 +419,7 @@ bool Measurements::update(MeasurementType type, float val, int ch) {
     break;
   case NO2_PPB:
     if(val<=0 || val>500.0f){ // Check Out of Bound
-      return true;  
+      return false;  
     }else{
       // _no2.update.avg = val;
       // return true; 
@@ -422,11 +428,9 @@ bool Measurements::update(MeasurementType type, float val, int ch) {
     }
     break;
   case NO_PPB:
-    if(val<=0 || val>500.0f){ // Check Out of Bound
-      return true;
-    }else{
-      // _no.update.avg = val;
-      // return true; 
+    if(val<=0 || val>500.0f){   // Check Out of Bound
+      return false;
+    }else{                      // Proceed to update value
       temporary = &_no;
       invalidValue = utils::getInvalidNOx();
     }
@@ -438,16 +442,6 @@ bool Measurements::update(MeasurementType type, float val, int ch) {
       // _nox_ana.update.avg = val;
       // return true; 
       temporary = &_nox_ana;
-      invalidValue = utils::getInvalidNOx();
-    }
-    break;
-  case GAS_SPAN:
-    if(val<=0 || val>1000.0f){ // Check Out of Bound
-      return true;
-    }else{
-      // _gasSpan.update.avg = val;
-      // return true; 
-      temporary = &_gasSpan;
       invalidValue = utils::getInvalidNOx();
     }
     break;
@@ -583,9 +577,6 @@ float Measurements::getFloat(MeasurementType type, int ch) {
   case NOx_PPB:
     temporary = &_nox_ana;
     break;
-  case GAS_SPAN:
-    temporary = &_gasSpan;
-    break;
   default:
     break;
   }
@@ -634,9 +625,6 @@ float Measurements::getAverage(MeasurementType type, int ch) {
     break;
   case NOx_PPB:
     measurementAverage = _nox_ana.update.avg;
-    break;
-  case GAS_SPAN:
-    measurementAverage = _gasSpan.update.avg;
     break;
   case PM25:
     measurementAverage = _pm_25[ch].update.avg;

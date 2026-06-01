@@ -84,7 +84,6 @@ public:
     NO2_PPB,
     NO_PPB,
     NOx_PPB,
-    GAS_SPAN,
     NOx, // index value
     NOxRaw,
     PM01,    // PM1.0 under atmospheric environment
@@ -95,7 +94,7 @@ public:
     PM10_SP, // PM10 standard particle
     PM03_PC, // Particle 0.3 count
     PM05_PC, // Particle 0.5 count
-    PM01_PC, // Particle 1.0 count
+    PM01_PC, // Particle 1.0 count  
     PM25_PC, // Particle 2.5 count
     PM5_PC,  // Particle 5.0 count
     PM10_PC, // Particle 10 count

@@ -60,7 +60,7 @@ void AQMS600_NOx_Analyzer::read_NOx_concentration(void) {
             // Serial.printf("Span Gas Flow: %.2f\n", nox_params.span_gas_flow);
             // Serial.printf("Unit: %d\n", nox_params.unit);
             // Serial.println("NOx concentration parameters updated successfully.");
-            Serial.printf("Sucessfully Read!!");
+            // Serial.printf("Sucessfully Read!!");
         } else {
             Serial.println("Failed to update NOx concentration parameters: Invalid payload size.");
         }
@@ -113,7 +113,7 @@ auto AQMS600_NOx_Analyzer::receivePackage(uint8_t cmd_type) -> fpi_protocol_pack
         }
 
         uint8_t byteReceived = _serial->read();
-        Serial.printf("Stage %d - Byte[%d] received: %02x\n", recv_state, packageIndex, byteReceived);
+        // Serial.printf("Stage %d - Byte[%d] received: %02x\n", recv_state, packageIndex, byteReceived);
         startTime = millis(); // Reset timeout on every byte received
 
         switch (recv_state) {
