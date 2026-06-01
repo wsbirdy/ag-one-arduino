@@ -2,10 +2,8 @@
 #define _FPI_AQMS600_H_
 
 #include "../Main/BoardDef.h"
-#include <vector> // Include the vector header for std::vector
-#include <iterator> // Include iterator for std::begin and std::end
 
-using namespace std; // Add this to avoid prefixing with std::
+static constexpr size_t AQMS600_MAX_PAYLOAD_SIZE = 256;
 
 /** 
  * @brief The class define how to handle PMS5003 sensor bas on @ref PMS class
@@ -21,7 +19,8 @@ private:
         uint8_t header[6];
         uint8_t cmd_code[2];
         uint8_t data_length[2];
-        vector<uint8_t> data_payload;
+        uint8_t data_payload[AQMS600_MAX_PAYLOAD_SIZE];
+        size_t data_payload_len = 0;
         uint8_t crc16[2];
         uint8_t end[2];
     } packet;
@@ -44,7 +43,7 @@ private:
 
     bool active = true;
     uint16_t crc16_modbus(const uint8_t *data, size_t length);
-    void updateParams(const vector<uint8_t>& payload);
+    bool updateParams(const uint8_t *payload, size_t size);
     bool verifyCRC(const fpi_protocol_packet& pkg);
 
 public:

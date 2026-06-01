@@ -45,33 +45,27 @@ void AQMS600_NOx_Analyzer::read_NOx_concentration(void) {
     if (this->_serial)
     { 
         fpi_protocol_packet data;
-        vector<float> nox_values;
 
         send_read(this->_serial, AQMS600_NOx_concentration_params);
         data = receivePackage(AQMS600_NOx_concentration_params);
         
-        Serial.println("---------");
-        Serial.printf("Received %d bytes\n", data.data_payload.size());
+        // Serial.println("---------");
+        // Serial.printf("Received %d bytes\n", data.data_payload_len);
 
-        updateParams(data.data_payload);
+        if(updateParams(data.data_payload, data.data_payload_len))
+        {
+            // Serial.printf("NO Concentration: %.2f\n", nox_params.no_concentration);
+            // Serial.printf("NO2 Concentration: %.2f\n", nox_params.no2_concentration);
+            // Serial.printf("NOx Concentration: %.2f\n", nox_params.nox_concentration);
+            // Serial.printf("Span Gas Flow: %.2f\n", nox_params.span_gas_flow);
+            // Serial.printf("Unit: %d\n", nox_params.unit);
+            // Serial.println("NOx concentration parameters updated successfully.");
+            Serial.printf("Sucessfully Read!!");
+        } else {
+            Serial.println("Failed to update NOx concentration parameters: Invalid payload size.");
+        }
 
-        // for (size_t i = 0; i < data.data_payload.size(); i++)
-        // {
-        //     Serial.printf("Data Payload[%d]: %2x \n", i, data.data_payload[i]);
-        // }
-        // memcpy(&nox_params.no_concentration, &data.data_payload[0], sizeof(float));
-        // memcpy(&nox_params.no2_concentration, (data.data_payload.data() + 4), sizeof(float));
-        // nox_params.no2_concentration = ((uint32_t)data.data_payload[0]<<24) | 
-        //                                ((uint32_t)data.data_payload[1]<<16) | 
-        //                                ((uint32_t)data.data_payload[2]<<8) | 
-        //                                (uint32_t)data.data_payload[3];
-
-        // Serial.printf("NO Concentration: %.2f\n", nox_params.no_concentration);
-        // Serial.printf("NO2 Concentration: %.2f\n", nox_params.no2_concentration);
-        // Serial.printf("NOx Concentration: %.2f\n", nox_params.nox_concentration);
-        // Serial.printf("Span Gas Flow: %.2f\n", nox_params.span_gas_flow);
-        // Serial.printf("Unit: %d\n", nox_params.unit);
-        Serial.println("---------");
+        // Serial.println("---------");
     }
 }
 
@@ -79,28 +73,23 @@ void AQMS600_NOx_Analyzer::send_read(Stream *serial, uint8_t cmd) {
     uint8_t header[] = {0x7D, 0x7B, 0x01, 0x10, 0x01, 0xF2};
     uint8_t cmd_code[] = {cmd, SEND_READ};
     uint8_t datalen[] = {0x00, 0x00};
-    uint8_t crc16[] = {0x00, 0x00}; // Placeholder for CRC16 bytes
+    uint8_t crc16[2];
     uint8_t end[] = {0x7D, 0x7D};
 
-    // Create payload by concatenating header, cmd_type, and datalen
-    vector<uint8_t> payload;
-    payload.insert(payload.end(), std::begin(header), std::end(header));
-    payload.insert(payload.end(), std::begin(cmd_code), std::end(cmd_code));
-    payload.insert(payload.end(), std::begin(datalen), std::end(datalen));
+    uint8_t payload[16];
+    size_t idx = 0;
+    memcpy(payload + idx, header, sizeof(header)); idx += sizeof(header);
+    memcpy(payload + idx, cmd_code, sizeof(cmd_code)); idx += sizeof(cmd_code);
+    memcpy(payload + idx, datalen, sizeof(datalen)); idx += sizeof(datalen);
 
-    // Calculate CRC16 over the relevant part of the payload
-    uint16_t cal_crc = crc16_modbus(&payload[2], payload.size()-2); 
-    // CRC byte: low byte first, then high byte
-    crc16[0] = (uint8_t)(cal_crc & 0xFF);        // Low byte
-    crc16[1] = (uint8_t)((cal_crc >> 8) & 0xFF); // High byte
-
-    // Concatenate payload with CRC16 and end bytes
-    payload.insert(payload.end(), std::begin(crc16), std::end(crc16));
-    payload.insert(payload.end(), std::begin(end), std::end(end));
+    uint16_t cal_crc = crc16_modbus(payload + 2, idx - 2);
+    payload[idx++] = (uint8_t)(cal_crc & 0xFF);
+    payload[idx++] = (uint8_t)((cal_crc >> 8) & 0xFF);
+    memcpy(payload + idx, end, sizeof(end)); idx += sizeof(end);
 
     if (this->_serial) {
-        _serial->write(payload.data(), payload.size());     // Send the payload to the serial port
-        // Serial.printf("Sent %d bytes\n", payload.size());
+        _serial->write(payload, idx);     // Send the payload to the serial port
+        // Serial.printf("Sent %d bytes\n", idx);
     } else {
         Serial.println("Error: Serial port not initialized.");
     }
@@ -114,12 +103,9 @@ auto AQMS600_NOx_Analyzer::receivePackage(uint8_t cmd_type) -> fpi_protocol_pack
     const uint32_t TIMEOUT_MS = 1000; // Serial safety timeout
 
     fpi_protocol_packet incoming_packet;
+    incoming_packet.data_payload_len = 0;
 
-    // Optimization 1: Pre-reserve vector memory to prevent multiple heap reallocations
-    // Based on your AQMS-600 data, 64 bytes is a safe initial guess.
-    incoming_packet.data_payload.reserve(64); 
-
-    // Optimization 2: Use a more robust loop for Serial timing
+    // Use a more robust loop for Serial timing
     while (millis() - startTime < TIMEOUT_MS) {
         if (!_serial->available()) {
             delayMicroseconds(100); // Small breath for UART buffer to fill
@@ -127,7 +113,7 @@ auto AQMS600_NOx_Analyzer::receivePackage(uint8_t cmd_type) -> fpi_protocol_pack
         }
 
         uint8_t byteReceived = _serial->read();
-        // Serial.printf("Stage %d - Byte[%d] received: %02x\n", recv_state, packageIndex, byteReceived);
+        Serial.printf("Stage %d - Byte[%d] received: %02x\n", recv_state, packageIndex, byteReceived);
         startTime = millis(); // Reset timeout on every byte received
 
         switch (recv_state) {
@@ -169,8 +155,10 @@ auto AQMS600_NOx_Analyzer::receivePackage(uint8_t cmd_type) -> fpi_protocol_pack
                 break;
 
             case 3: // Payload
-                incoming_packet.data_payload.push_back(byteReceived);
-                if (incoming_packet.data_payload.size() >= datain_size) {
+                if (incoming_packet.data_payload_len < AQMS600_MAX_PAYLOAD_SIZE) {
+                    incoming_packet.data_payload[incoming_packet.data_payload_len++] = byteReceived;
+                }
+                if (incoming_packet.data_payload_len >= datain_size) {
                     recv_state = 4;
                     packageIndex = 0;
                 }
@@ -226,14 +214,13 @@ uint16_t AQMS600_NOx_Analyzer::crc16_modbus(const uint8_t *data, size_t length) 
     return crc;
 }
 
-void AQMS600_NOx_Analyzer::updateParams(const vector<uint8_t>& payload) {
+bool AQMS600_NOx_Analyzer::updateParams(const uint8_t *payload, size_t size) {
     
     memset((void*)&nox_params, 0, sizeof(nox_params));
-    nox_params.span_gas_flow = payload.size();
-    if (payload.size() < sizeof(nox_params)){ return; }
+    if (size < sizeof(nox_params)) { return false; }
 
     // 1. Bulk copy
-    memcpy((void*)&nox_params, payload.data(), sizeof(nox_params));
+    memcpy((void*)&nox_params, payload, sizeof(nox_params));
 
     // 2. Fast Byte-Swapping using ESP32-C3 (RISC-V) Intrinsics
     // We create a tiny lambda helper for readability
@@ -250,6 +237,7 @@ void AQMS600_NOx_Analyzer::updateParams(const vector<uint8_t>& payload) {
     // // Note: nox_params.unit (at index 12) is 1 byte, so NO SWAP needed.
     
     swap((float*)&nox_params.span_gas_flow);
+    return true;
 }
 
 bool AQMS600_NOx_Analyzer::verifyCRC(const fpi_protocol_packet& pkg) {
@@ -260,7 +248,7 @@ bool AQMS600_NOx_Analyzer::verifyCRC(const fpi_protocol_packet& pkg) {
     memcpy(&buf[len], &pkg.header[2], 4); len += 4;
     memcpy(&buf[len], pkg.cmd_code, 2);    len += 2;
     memcpy(&buf[len], pkg.data_length, 2); len += 2;
-    memcpy(&buf[len], pkg.data_payload.data(), pkg.data_payload.size()); len += pkg.data_payload.size();
+    memcpy(&buf[len], pkg.data_payload, pkg.data_payload_len); len += pkg.data_payload_len;
 
     uint16_t calculated = crc16_modbus(buf, len);
     uint16_t received = (pkg.crc16[1] << 8) | pkg.crc16[0]; // Modbus usually Low Byte first
